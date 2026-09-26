@@ -57,7 +57,7 @@ for ax,(t,combo) in zip(axs,tests.items()):
     if 'Boca abierta' in t:
         cu=up[np.abs(base[up,0])<0.03]; cl=lo[np.abs(base[lo,0])<0.03]
         msg=f"apertura en el centro {base[cu,2].min()-base[cl,2].max():+.3f} -> {P[cu,2].min()-P[cl,2].max():+.3f}"
-    if 'Feliz' in t or 'Triste' in t: msg=f"comisuras dz L {P[cL,2]-base[cL,2]:+.3f} R {P[cR,2]-base[cR,2]:+.3f}"
+    if 'Feliz' in t or 'Triste' in t: msg=f"comisuras dz {P[cL,2]-base[cL,2]:+.3f}/{P[cR,2]-base[cR,2]:+.3f} | ancho boca {base[cL,0]-base[cR,0]:.3f}->{P[cL,0]-P[cR,0]:.3f}"
     print(f"{t:44} caras invertidas: {flips} | {msg}")
     vis=[p for p in polys if P[p][:,1].mean()<-0.2 and abs(P[p][:,0].mean())<0.95 and 3.1<P[p][:,2].mean()<4.75]
     vis.sort(key=lambda p:-P[p][:,1].mean())

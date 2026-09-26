@@ -158,7 +158,7 @@ def build(arm, meobj, open_key='BOCA AAAA'):
     infl['Jaw'] = jaw
     for s, cr in (('Left', cornerL), ('Right', cornerR)):
         sg = 1 if s == 'Left' else -1
-        infl[s + 'LipCorner'] = fall(d(cr), max(0.24, mouth_w * 1.1)) * face
+        infl[s + 'LipCorner'] = fall(d(cr), max(0.28, mouth_w * 1.3)) * face
         side = np.clip(0.5 + sg * (co[:, 0] - mouth_c[0]) / max(mouth_w, 1e-3), 0, 1)
         ll = np.zeros(n); ll[lo_lip] = 0.4 * side[lo_lip]
         ll += fall(d(mouth_c + [sg * mouth_w * 0.3, 0, -0.06], 1.0, 0.8), 0.16) * below * face * side * 0.7
@@ -218,13 +218,13 @@ def build(arm, meobj, open_key='BOCA AAAA'):
         ('LeftEyeClosed', pose_eyeclose('Left')),
         ('RightEyeClosed', pose_eyeclose('Right')),
         ('JawDrop', {'Jaw': dict(r=('X', 25))}),
-        ('Pucker', {'LeftLipCorner': dict(t=(-mw * 0.18, -0.03, 0)), 'RightLipCorner': dict(t=(mw * 0.18, -0.03, 0)),
+        ('Pucker', {'LeftLipCorner': dict(t=(-mw * 0.04, -0.03, 0)), 'RightLipCorner': dict(t=(mw * 0.04, -0.03, 0)),
                     'UpperLip': dict(t=(0, -0.03, 0)), 'LeftLowerLip': dict(t=(0, -0.03, 0)), 'RightLowerLip': dict(t=(0, -0.03, 0))}),
     ]
     for s in ('Left', 'Right'):
         o = OUT(s)
         poses += [
-            (s + 'LipCornerPuller', {s + 'LipCorner': dict(t=(o * mw * 0.22, 0.02, mw * 0.35)), s + 'Cheek': dict(t=(0, -0.01, 0.03))}),
+            (s + 'LipCornerPuller', {s + 'LipCorner': dict(t=(o * mw * 0.35, 0.02, mw * 0.45)), s + 'Cheek': dict(t=(0, -0.01, 0.04))}),
             (s + 'LipCornerDown', {s + 'LipCorner': dict(t=(o * mw * 0.05, 0, -mw * 0.3))}),
             (s + 'LowerLipDepressor', {s + 'LowerLip': dict(t=(0, -0.01, -mw * 0.3))}),
             (s + 'CheekRaiser', {s + 'Cheek': dict(t=(0, -0.02, 0.07)), s + 'LowerLid': dict(t=(0, 0, Rl * 0.3))}),
