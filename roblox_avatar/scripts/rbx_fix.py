@@ -95,6 +95,11 @@ enlarge_mouth(me.data, 'BOCA AAAA', **json.loads(os.environ.get('MOUTH', '{}')))
 # left leg topology differed from the right one (source mesh artifact): mirror it
 from rbx_kneepatch import mirror_left_leg
 mirror_left_leg(me.data, {g.name: g.index for g in me.vertex_groups})
+# source custom normals are exactly smooth vertex normals: drop them so new/edited faces shade the same
+for name in ('custom_normal', 'sharp_edge', 'sharp_face'):
+    if name in me.data.attributes: me.data.attributes.remove(me.data.attributes[name])
+for p in me.data.polygons: p.use_smooth = True
+me.data.update()
 # Roblox convention: Blender unit scale 0.01 -> FBX values in studs
 bpy.context.scene.unit_settings.scale_length = 0.01
 bpy.ops.object.select_all(action='DESELECT'); arm.select_set(True); me.select_set(True)

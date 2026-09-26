@@ -1,7 +1,7 @@
 """Replace the asymmetric patch on the left inner knee with a mirror copy of the right knee,
 so Avatar Setup processes both lower legs identically."""
 import bmesh, numpy as np
-from mathutils import Vector
+from mathutils import Vector, geometry
 from scipy.spatial import cKDTree
 
 
@@ -102,9 +102,31 @@ def mirror_left_leg(me, vgroups, z_top=1.2, tol=0.02):
         assert d < tol and j in bL, f"boundary vertex {i} has no mirrored partner"
         corr[i] = int(j)
     assert set(corr.values()) == bL and len(bR) == len(bL), "leg boundary loops differ"
-    # old left loops, for seam-aware UV lookup: (vertex co, face centre, uv)
-    old = [(np.array(lp.vert.co[:]), cen(f), lp[uvl].uv.copy()) for f in fL for lp in f.loops]
-    old_v = np.array([o[0] for o in old]); old_c = np.array([o[1] for o in old])
+    # old left surface as UV-island-tagged triangles, to re-project UVs onto the new faces
+    tris, tri_uv, tri_face = [], [], []
+    for f in fL:
+        lps = list(f.loops)
+        for k in range(1, len(lps) - 1):
+            t = (lps[0], lps[k], lps[k + 1])
+            tris.append([np.array(l.vert.co[:]) for l in t]); tri_uv.append([l[uvl].uv.copy() for l in t])
+            tri_face.append(f.index)
+    tris = np.array(tris)
+    # UV islands of the old left faces (faces sharing an edge with identical UVs on both ends)
+    fidx = {f.index: n for n, f in enumerate(fL)}; parent = list(range(len(fL)))
+    def find(a):
+        while parent[a] != a: parent[a] = parent[parent[a]]; a = parent[a]
+        return a
+    def uv_at(f, v):
+        for l in f.loops:
+            if l.vert == v: return l[uvl].uv
+    for f in fL:
+        for e in f.edges:
+            for g in e.link_faces:
+                if g is f or g.index not in fidx: continue
+                if all((uv_at(f, v) - uv_at(g, v)).length < 1e-6 for v in e.verts):
+                    parent[find(fidx[f.index])] = find(fidx[g.index])
+    tri_island = np.array([find(fidx[i]) for i in tri_face])
+    tri_cent = tris.mean(1)
     right_faces = [[v.index for v in f.verts] for f in fR]
     right_w = {v.index: dict(v[deform]) for f in fR for v in f.verts}
     swap = {g: vgroups[n.replace('Right', 'Left')] for n, g in vgroups.items()
@@ -127,12 +149,22 @@ def mirror_left_leg(me, vgroups, z_top=1.2, tol=0.02):
     made = []
     for vs in right_faces:
         f = bm.faces.new([left_vert(i) for i in vs][::-1]); made.append(f)
+        f.smooth = True
         c = np.array(f.calc_center_median()[:])
+        isl = tri_island[np.argmin(np.linalg.norm(tri_cent - c, axis=1))]
+        cand = np.where(tri_island == isl)[0]
         for lp in f.loops:
-            p = np.array(lp.vert.co[:])
-            # nearest old loop by vertex position, tie-broken by face centre (keeps UV islands apart)
-            k = np.argmin(np.linalg.norm(old_v - p, axis=1) * 4 + np.linalg.norm(old_c - c, axis=1))
-            lp[uvl].uv = old[k][2]
+            p = lp.vert.co
+            best = None
+            for t in cand[np.argsort(np.linalg.norm(tri_cent[cand] - np.array(p[:]), axis=1))[:12]]:
+                a_, b_, c_ = (Vector(x) for x in tris[t])
+                q = geometry.closest_point_on_tri(p, a_, b_, c_)
+                d = (q - p).length
+                if best is None or d < best[0]: best = (d, t, q)
+            _, t, q = best
+            a_, b_, c_ = (Vector(x) for x in tris[t])
+            u = geometry.barycentric_transform(q, a_, b_, c_, *(Vector((w.x, w.y, 0)) for w in tri_uv[t]))
+            lp[uvl].uv = (u.x, u.y)
     bmesh.ops.recalc_face_normals(bm, faces=made)
     nm = sum(1 for e in bm.edges if not e.is_manifold)
     bm.to_mesh(me); bm.free(); me.update()
