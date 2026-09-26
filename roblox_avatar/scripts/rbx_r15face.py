@@ -144,7 +144,8 @@ def build(arm, meobj, open_key='BOCA AAAA'):
         # skin ring around the eye follows the lids a little
         ring = np.hypot(co[:, 0] - c[0], co[:, 2] - c[2])
         skin = np.ones(n, bool); skin[idx] = False
-        k = fall(np.abs(ring - R * 1.1), R * 0.8) * 0.18 * front * skin
+        k = fall(np.abs(ring - R * 1.1), R * 1.1) * 0.45 * front * skin
+        k *= np.clip(np.abs(co[:, 2] - c[2]) / (R * 0.8), 0, 1) ** 1.5  # corners stay put: lids meet, never cross
         u += np.where(co[:, 2] > c[2], k, 0); l += np.where(co[:, 2] <= c[2], k, 0)
         infl[s + 'UpperLid'] = u; infl[s + 'LowerLid'] = l; infl[s + 'Eye'] = look
     d = lambda p, sx=1.0, sz=1.0: np.sqrt(((co[:, 0] - p[0]) / sx) ** 2 + ((co[:, 2] - p[2]) / sz) ** 2)
@@ -210,7 +211,7 @@ def build(arm, meobj, open_key='BOCA AAAA'):
         R = eye[s]['R']
         return {s + 'UpperLid': dict(t=(0, 0, -R)), s + 'LowerLid': dict(t=(0, 0, R * 0.9))}
     poses = [
-        ('EyesLookDown', {'LeftEye': dict(r=('X', 18)), 'RightEye': dict(r=('X', 18))}),
+        ('EyesLookDown', {'LeftEye': dict(r=('X', 10)), 'RightEye': dict(r=('X', 10))}),
         ('EyesLookUp', {'LeftEye': dict(r=('X', -18)), 'RightEye': dict(r=('X', -18))}),
         ('EyesLookLeft', {'LeftEye': dict(r=('Z', 20)), 'RightEye': dict(r=('Z', 20))}),
         ('EyesLookRight', {'LeftEye': dict(r=('Z', -20)), 'RightEye': dict(r=('Z', -20))}),

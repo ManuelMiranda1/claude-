@@ -51,8 +51,8 @@ def mirror_knee_patch(me, vgroups, center_right, radius=0.13, tol=0.02):
     left_uv = {}
     for f in fL:
         for lp in f.loops: left_uv.setdefault(lp.vert.index, lp[uvl].uv.copy())
-    swap = {g: vgroups[n.replace('Right', 'Left')] for n, g in vgroups.items()
-            if 'Right' in n and n.replace('Right', 'Left') in vgroups}
+    _sw = lambda n: n.replace('Left', '#').replace('Right', 'Left').replace('#', 'Right')
+    swap = {g: vgroups[_sw(n)] for n, g in vgroups.items() if _sw(n) in vgroups}  # Right<->Left, both ways
     keep = {i: bm.verts[i] for i in bL}
 
     # delete the left patch (faces, then its now-loose interior verts)
@@ -129,8 +129,8 @@ def mirror_left_leg(me, vgroups, z_top=1.2, tol=0.02):
     tri_cent = tris.mean(1)
     right_faces = [[v.index for v in f.verts] for f in fR]
     right_w = {v.index: dict(v[deform]) for f in fR for v in f.verts}
-    swap = {g: vgroups[n.replace('Right', 'Left')] for n, g in vgroups.items()
-            if 'Right' in n and n.replace('Right', 'Left') in vgroups}
+    _sw = lambda n: n.replace('Left', '#').replace('Right', 'Left').replace('#', 'Right')
+    swap = {g: vgroups[_sw(n)] for n, g in vgroups.items() if _sw(n) in vgroups}  # Right<->Left, both ways
     keep = {i: bm.verts[i] for i in bL}
     interior = {v for f in fL for v in f.verts if v.index not in bL}
     nfL, nvL = len(fL), len(interior)

@@ -10,6 +10,22 @@ arm = bpy.data.objects['Armature']
 me = [o for o in bpy.data.objects if o.type == 'MESH'][0]
 mod = [m for m in me.modifiers if m.type == 'ARMATURE'][0]
 assert not mod.use_deform_preserve_volume
+# source rig error: some thigh vertices were weighted to the OTHER leg's bones (left leg: 51 verts,
+# up to 0.37). Each leg must only follow its own bones: drop cross-leg weights and renormalise.
+_names = {g.index: g.name.replace('mixamorig:', '') for g in me.vertex_groups}
+_leg = lambda n, s: n.startswith(s) and any(k in n for k in ('UpLeg', 'Leg', 'Foot', 'Toe'))
+_fixed = 0
+for v in me.data.vertices:
+    if abs(v.co.x) < 0.01: continue  # crotch seam on the centre line is shared by both legs
+    side = 'Left' if v.co.x > 0 else 'Right'; other = 'Right' if side == 'Left' else 'Left'
+    bad = [g for g in v.groups if _leg(_names[g.group], other)]
+    if not bad: continue
+    keep = [(g.group, g.weight) for g in v.groups if g not in bad]
+    tot = sum(w for _, w in keep)
+    for g in bad: me.vertex_groups[g.group].remove([v.index])
+    for gi, w in keep: me.vertex_groups[gi].add([v.index], w / tot, 'REPLACE')
+    _fixed += 1
+print("cross-leg weights removed on", _fixed, "verts")
 action = arm.animation_data.action
 slot = getattr(arm.animation_data, 'action_slot', None)
 arm.animation_data.action = None

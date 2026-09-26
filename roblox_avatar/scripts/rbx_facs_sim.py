@@ -50,7 +50,10 @@ for ax,(t,combo) in zip(axs,tests.items()):
         side = 1 if 'izq' in t else -1
         e=np.where((side*base[:,0]>0.1)&(np.hypot(np.abs(base[:,0])-0.308, base[:,2]-3.94)<0.235)&(base[:,1]<-0.395)&(base[:,1]>-0.63))[0]
         e=[i for i in e if i in eyeset]
-        msg=f"alto del globo ocular {np.ptp(base[e,2]):.2f} -> {np.ptp(P[e,2]):.2f}"
+        cx=side*0.308; sk=[i for i in range(len(base)) if i not in eyeset and abs(base[i,0]-cx)<0.08 and base[i,1]<-0.35 and 0.2<abs(base[i,2]-3.94)<0.36]
+        upk=[i for i in sk if base[i,2]>3.94]; lok=[i for i in sk if base[i,2]<3.94]
+        skin_gap0=base[upk,2].mean()-base[lok,2].mean(); skin_gap1=P[upk,2].mean()-P[lok,2].mean()
+        msg=f"globo {np.ptp(base[e,2]):.2f}->{np.ptp(P[e,2]):.2f} | piel arriba-abajo {skin_gap0:.2f}->{skin_gap1:.2f}"
     if 'Boca abierta' in t:
         cu=up[np.abs(base[up,0])<0.03]; cl=lo[np.abs(base[lo,0])<0.03]
         msg=f"apertura en el centro {base[cu,2].min()-base[cl,2].max():+.3f} -> {P[cu,2].min()-P[cl,2].max():+.3f}"
