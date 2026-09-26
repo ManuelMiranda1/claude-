@@ -92,6 +92,9 @@ from rbx_mouthparts import add_mouthparts, enlarge_mouth
 add_mouthparts(me.data, me.vertex_groups['mixamorig:Head'].index, [k.name for k in keys], 'BOCA AAAA')
 import os, json
 enlarge_mouth(me.data, 'BOCA AAAA', **json.loads(os.environ.get('MOUTH', '{}')))
+# left leg topology differed from the right one (source mesh artifact): mirror it
+from rbx_kneepatch import mirror_left_leg
+mirror_left_leg(me.data, {g.name: g.index for g in me.vertex_groups})
 # Roblox convention: Blender unit scale 0.01 -> FBX values in studs
 bpy.context.scene.unit_settings.scale_length = 0.01
 bpy.ops.object.select_all(action='DESELECT'); arm.select_set(True); me.select_set(True)
