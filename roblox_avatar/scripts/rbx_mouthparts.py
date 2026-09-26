@@ -82,3 +82,54 @@ def add_mouthparts(me, head_group, key_names, open_key):
     bmesh.ops.recalc_face_normals(bm, faces=[f for f in bm.faces if f.verts[0].index == -1 or f.verts[0].index >= n0])
     bm.to_mesh(me); bm.free(); me.update()
     print("mouthparts added:", {k: len(v[0]) for k, v in made.items()})
+
+
+def enlarge_mouth(me, open_key, sx=1.7, sz=1.5, r0=0.11, R=0.46, y_lo=-0.45, y_hi=-0.55):
+    """Radially scale the mouth area (x/z plane, front of face only) with a smooth falloff,
+    so Avatar Setup's mouth landmarks land on it. Eye islands are left untouched."""
+    import bmesh
+    kb = me.shape_keys.key_blocks
+    co = np.array([v.co[:] for v in me.vertices])
+    d = np.array([p.co[:] for p in kb[open_key].data]) - np.array([p.co[:] for p in kb['Basis'].data])
+    lip = np.where(np.linalg.norm(d, axis=1) > 1e-6)[0]
+    cx, cz = 0.0, co[lip, 2].mean()
+    # eye islands: small separate islands above the mouth
+    bm = bmesh.new(); bm.from_mesh(me); bm.verts.ensure_lookup_table()
+    seen = set(); keep = np.zeros(len(co), bool)
+    for v in bm.verts:
+        if v.index in seen: continue
+        st = [v]; comp = []; seen.add(v.index)
+        while st:
+            x = st.pop(); comp.append(x.index)
+            for e in x.link_edges:
+                o = e.other_vert(x)
+                if o.index not in seen: seen.add(o.index); st.append(o)
+        if len(comp) < 200 and co[comp, 2].mean() > cz + 0.2: keep[comp] = True
+    bm.free()
+    def smooth(t): t = np.clip(t, 0, 1); return t * t * (3 - 2 * t)
+    def profile(s):
+        """r -> r' with slope s inside r0, always-positive slope in the ring, identity beyond R."""
+        L = R - r0; t = np.linspace(0, 1, 2001)
+        c = -(s - 1) * (r0 + 0.5 * L) / (L * 2 / 3)
+        slope = 1 + (s - 1) * (1 - smooth(t)) + c * 4 * t * (1 - t)
+        assert slope.min() > 0, "warp not monotonic"
+        rr = r0 + t * L
+        seg = np.concatenate([[0], np.cumsum((slope[1:] + slope[:-1]) / 2 * np.diff(rr))])
+        out = s * r0 + seg
+        assert abs(out[-1] - R) < 1e-6
+        return lambda r: np.where(r < r0, s * r, np.where(r > R, r, np.interp(r, rr, out)))
+    px, pz = profile(sx), profile(sz)
+    def warp(P):
+        dx, dz = P[:, 0] - cx, P[:, 2] - cz
+        r = np.maximum(np.hypot(dx, dz), 1e-9)
+        wy = smooth((P[:, 1] - y_lo) / (y_hi - y_lo)); wy[keep] = 0
+        mx = 1 + (px(r) / r - 1) * wy; mz = 1 + (pz(r) / r - 1) * wy
+        Q = P.copy(); Q[:, 0] = cx + dx * mx; Q[:, 2] = cz + dz * mz
+        return Q
+    for k in kb:
+        P = np.array([p.co[:] for p in k.data]); Q = warp(P)
+        for i, p in enumerate(k.data): p.co = Q[i]
+    me.vertices.foreach_set('co', np.array([p.co[:] for p in kb['Basis'].data]).ravel())
+    me.update()
+    n = np.array([p.co[:] for p in kb['Basis'].data])[lip]
+    print(f"mouth enlarged: width {np.ptp(co[lip,0]):.3f} -> {np.ptp(n[:,0]):.3f}, height {np.ptp(co[lip,2]):.3f} -> {np.ptp(n[:,2]):.3f}")
