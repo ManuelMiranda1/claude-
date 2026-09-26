@@ -91,7 +91,8 @@ sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(_
 from rbx_mouthparts import add_mouthparts, enlarge_mouth
 add_mouthparts(me.data, me.vertex_groups['mixamorig:Head'].index, [k.name for k in keys], 'BOCA AAAA')
 import os, json
-enlarge_mouth(me.data, 'BOCA AAAA', **json.loads(os.environ.get('MOUTH', '{}')))
+if os.environ.get('MOUTH', 'off') != 'off':  # v4-v6 enlarged the mouth; v7 keeps the original design
+    enlarge_mouth(me.data, 'BOCA AAAA', **json.loads(os.environ['MOUTH']))
 # left leg topology differed from the right one (source mesh artifact): mirror it
 from rbx_kneepatch import mirror_left_leg
 mirror_left_leg(me.data, {g.name: g.index for g in me.vertex_groups})
@@ -100,9 +101,14 @@ for name in ('custom_normal', 'sharp_edge', 'sharp_face'):
     if name in me.data.attributes: me.data.attributes.remove(me.data.attributes[name])
 for p in me.data.polygons: p.use_smooth = True
 me.data.update()
+# R15 rig + hand-authored FACS face (Avatar Setup keeps it instead of generating one)
+from rbx_r15face import build
+arm, poses = build(arm, me)
 # Roblox convention: Blender unit scale 0.01 -> FBX values in studs
 bpy.context.scene.unit_settings.scale_length = 0.01
 bpy.ops.object.select_all(action='DESELECT'); arm.select_set(True); me.select_set(True)
+bpy.context.view_layer.objects.active = arm
 bpy.ops.export_scene.fbx(filepath=DST, use_selection=True, object_types={'ARMATURE', 'MESH'},
     apply_unit_scale=True, apply_scale_options='FBX_SCALE_NONE', add_leaf_bones=False,
-    bake_anim=True, path_mode='COPY', embed_textures=True)
+    use_custom_props=True, bake_anim=True, bake_anim_use_nla_strips=False, bake_anim_use_all_actions=False,
+    bake_anim_force_startend_keying=False, bake_anim_simplify_factor=0.0, path_mode='COPY', embed_textures=True)
